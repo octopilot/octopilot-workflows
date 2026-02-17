@@ -38,11 +38,6 @@ on:
                 required: false
                 type: string
                 default: "lts/*"
-            python-version:
-                description: "Python version to use"
-                required: false
-                type: string
-                default: "3.12"
             java-version:
                 description: "Java version to use"
                 required: false
@@ -89,7 +84,7 @@ jobs:
             - uses: actions/setup-java@v4
               if: contains(inputs.languages, 'java')
               with:
-                  distribution: 'temurin'
+                  distribution: "temurin"
                   java-version: ${{ inputs.java-version }}
 
             - name: Install pre-commit
