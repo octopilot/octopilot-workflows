@@ -1,0 +1,131 @@
+name: "Octopilot: Acceptance Cycle"
+
+on:
+    workflow_call:
+        inputs:
+            tag:
+                description: "GitHub tag to be deployed"
+                type: string
+                required: true
+            environment:
+                description: "Target environment name (e.g. dev, pp, prod)"
+                type: string
+                required: true
+            runtime_provider:
+                description: "Runtime provider (metro-runtime, google-gke, cloud-run)"
+                type: string
+                required: true
+                default: "google-gke"
+            gcp_workload_identity_provider:
+                description: "GCP Workload Identity Provider"
+                type: string
+                required: false
+            gcp_service_account:
+                description: "GCP Service Account"
+                type: string
+                required: false
+            gke_cluster:
+                description: "GKE Cluster Name"
+                type: string
+                required: false
+            gke_zone:
+                description: "GKE Cluster Zone"
+                type: string
+                required: false
+            gcp_project_id:
+                description: "GCP Project ID"
+                type: string
+                required: false
+        secrets:
+            GPG_KEY:
+                required: false
+            IDAM_OIDC_URL:
+                required: false
+            # Allow passing all secrets
+
+jobs:
+    deploy:
+        name: "Deploy to ${{ inputs.environment }}"
+        environment: ${{ inputs.environment }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: "read"
+            id-token: "write"
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  ref: ${{ inputs.tag }}
+
+            - name: Read pipeline properties
+              uses: octopilot/octopilot-actions/read-properties@v1
+              with:
+                  file: .github/waas/pipeline.properties
+
+            - name: Install tools
+              uses: metro-digital/setup-tools-for-waas@v0.x
+              with:
+                  version: waas/v2
+
+            # --- Authentication ---
+
+            - name: Authenticate to Google Cloud
+              if: ${{ inputs.runtime_provider == 'google-gke' || inputs.runtime_provider == 'cloud-run' }}
+              uses: google-github-actions/auth@v2
+              with:
+                  workload_identity_provider: ${{ inputs.gcp_workload_identity_provider }}
+                  service_account: ${{ inputs.gcp_service_account }}
+
+            # --- Secrets ---
+
+            - name: Decrypt Pipeline Secrets
+              uses: octopilot/octopilot-actions/sops-decrypt@v1
+              if: ${{ hashFiles('.github/waas/pipeline.secrets.yaml') != '' }}
+              with:
+                  file: .github/waas/pipeline.secrets.yaml
+                  gpg_key: ${{ secrets.GPG_KEY }}
+                  output_type: json
+                  export_envs: true
+
+            # --- GKE Setup ---
+
+            - name: Setup kubectl (GKE)
+              if: ${{ inputs.runtime_provider == 'google-gke' }}
+              uses: google-github-actions/get-gke-credentials@v2
+              with:
+                  cluster_name: ${{ inputs.gke_cluster }}
+                  location: ${{ inputs.gke_zone }}
+
+            # --- Deployment ---
+
+            - name: Deploy
+              run: |
+                  chmod +x .github/waas/pipeline.sh
+
+                  # Construct labels
+                  GIT_COMMIT_SHA=$(git rev-list -n 1 HEAD)
+                  labels="provider=octopilot,repository.name=${{ github.event.repository.name }},repository.commit_sha=${GIT_COMMIT_SHA}"
+
+                  if [ "${{ inputs.runtime_provider }}" == "google-gke" ]; then
+                    ./.github/waas/pipeline.sh deploy \
+                      --profile ${{ inputs.environment }} \
+                      --label "$labels" \
+                      --default-repo "${{ env.GOOGLE_GKE_IMAGE_REPOSITORY }}" \
+                      --namespace "${{ env.KUBERNETES_NAMESPACE }}"
+                      
+                  elif [ "${{ inputs.runtime_provider }}" == "cloud-run" ]; then
+                     ./.github/waas/pipeline.sh render \
+                       --profile ${{ inputs.environment }} \
+                       --label "$labels" \
+                       --digest-source tag \
+                       --default-repo "${{ env.GOOGLE_GKE_IMAGE_REPOSITORY }}" \
+                       --output rendered-cloud-run-service.yaml
+                  fi
+
+            - name: Deploy to Cloud Run
+              if: ${{ inputs.runtime_provider == 'cloud-run' }}
+              uses: google-github-actions/deploy-cloudrun@v2
+              with:
+                  metadata: ./rendered-cloud-run-service.yaml
+                  region: ${{ inputs.gke_zone }} # Re-using gke_zone as a proxy for region if needed, or add input
