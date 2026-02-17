@@ -1,0 +1,58 @@
+name: Reusable Release Workflow
+
+on:
+    workflow_call:
+        inputs:
+            mode:
+                description: "Language mode (go, rust, maven, gradle, node, python, dotnet, text)"
+                required: true
+                type: string
+            bump:
+                description: "Bump type (major, minor, patch)"
+                required: true
+                type: string
+                default: "patch"
+            file:
+                description: "Path to version file (optional)"
+                required: false
+                type: string
+        secrets:
+            repo_token:
+                description: "GitHub Token (PAT) for pushing tags and triggering CI"
+                required: true
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  token: ${{ secrets.repo_token }}
+                  fetch-depth: 0
+
+            - name: Bump Version
+              id: bump
+              uses: octopilot/actions/bump-version@main
+              with:
+                  mode: ${{ inputs.mode }}
+                  bump: ${{ inputs.bump }}
+                  file: ${{ inputs.file }}
+
+            - name: Commit, Tag, and Push
+              uses: EndBug/add-and-commit@v9
+              with:
+                  add: "." # Add all changes (the bumped file)
+                  message: "chore(release): bump version to v${{ steps.bump.outputs.version }}"
+                  tag: "v${{ steps.bump.outputs.version }}"
+                  author_name: "github-actions[bot]"
+                  author_email: "github-actions[bot]@users.noreply.github.com"
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v2
+              with:
+                  tag_name: "v${{ steps.bump.outputs.version }}"
+                  generate_release_notes: true
+                  token: ${{ secrets.repo_token }}
