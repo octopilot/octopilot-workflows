@@ -12,6 +12,11 @@ on:
                 required: false
                 type: string
                 default: ""
+            context:
+                description: "Path to the project context (directory)."
+                required: false
+                type: string
+                default: "."
             command:
                 description: "Custom test command. Defaults to standard language test command."
                 required: false
@@ -56,14 +61,17 @@ jobs:
             # --- Run Tests ---
             - name: Run Tests (Go)
               if: inputs.language == 'go'
+              working-directory: ${{ inputs.context }}
               run: ${{ inputs.command || 'go test -v ./...' }}
 
             - name: Run Tests (Rust)
               if: inputs.language == 'rust'
+              working-directory: ${{ inputs.context }}
               run: ${{ inputs.command || 'cargo test' }}
 
             - name: Run Tests (Python)
               if: inputs.language == 'python'
+              working-directory: ${{ inputs.context }}
               run: |
                   pip install -r requirements.txt || true
                   pip install pytest
@@ -71,6 +79,7 @@ jobs:
 
             - name: Run Tests (Node)
               if: inputs.language == 'node'
+              working-directory: ${{ inputs.context }}
               run: |
                   npm ci || npm install
                   ${{ inputs.command || 'npm test' }}
