@@ -35,14 +35,14 @@ jobs:
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v3
 
-      - name: Build and Push to ttl.sh
-        id: build
-        uses: octopilot/octopilot-actions/build-ephemeral@main
-        with:
-          ttl: ${{ inputs.ttl }}
-          op_version: ${{ inputs.op_version }}
-          platform: ${{ inputs.platform }}
+            - name: Build and Push to ttl.sh
+              id: build
+              uses: octopilot/octopilot-actions/build-ephemeral@main
+              with:
+                  ttl: ${{ inputs.ttl }}
+                  op_version: ${{ inputs.op_version }}
+                  platform: ${{ inputs.platform }}
 
-      - name: Set Output
-        id: output
-        run: echo "image_ref=${{ steps.build.outputs.image_ref }}" >> $GITHUB_OUTPUT
+            - name: Set Output
+              id: output
+              run: echo "image_ref=${{ steps.build.outputs.image_ref }}" >> $GITHUB_OUTPUT
