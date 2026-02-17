@@ -23,6 +23,31 @@ on:
                 required: false
                 type: string
                 default: ""
+            go-version:
+                description: "Go version to use"
+                required: false
+                type: string
+                default: "stable"
+            rust-version:
+                description: "Rust version/toolchain to use"
+                required: false
+                type: string
+                default: "stable"
+            node-version:
+                description: "Node version to use"
+                required: false
+                type: string
+                default: "lts/*"
+            python-version:
+                description: "Python version to use"
+                required: false
+                type: string
+                default: "3.12"
+            java-version:
+                description: "Java version to use"
+                required: false
+                type: string
+                default: "17"
 
 jobs:
     lint:
@@ -41,19 +66,31 @@ jobs:
               if: contains(inputs.languages, 'go')
               uses: actions/setup-go@v5
               with:
-                  go-version: "stable"
+                  go-version: ${{ inputs.go-version }}
 
             - name: Setup Rust
               if: contains(inputs.languages, 'rust')
               uses: dtolnay/rust-toolchain@master
               with:
-                  toolchain: "stable"
+                  toolchain: ${{ inputs.rust-version }}
+                  components: rustfmt, clippy
 
             - name: Setup Node
               if: contains(inputs.languages, 'node')
               uses: actions/setup-node@v4
               with:
-                  node-version: "20"
+                  node-version: ${{ inputs.node-version }}
+
+            - uses: actions/setup-python@v5
+              if: contains(inputs.languages, 'python')
+              with:
+                  python-version: ${{ inputs.python-version }}
+
+            - uses: actions/setup-java@v4
+              if: contains(inputs.languages, 'java')
+              with:
+                  distribution: 'temurin'
+                  java-version: ${{ inputs.java-version }}
 
             - name: Install pre-commit
               run: pip install pre-commit
