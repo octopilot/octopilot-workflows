@@ -1,0 +1,76 @@
+name: "Test (Octopilot)"
+
+on:
+    workflow_call:
+        inputs:
+            language:
+                description: "Language to test (go, rust, python, node)."
+                required: true
+                type: string
+            version:
+                description: "Language version (e.g. 1.21, stable, 3.12, 20)."
+                required: false
+                type: string
+                default: ""
+            command:
+                description: "Custom test command. Defaults to standard language test command."
+                required: false
+                type: string
+                default: ""
+
+jobs:
+    test:
+        name: Test (${{ inputs.language }})
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            # --- Go Setup ---
+            - name: Setup Go
+              if: inputs.language == 'go'
+              uses: actions/setup-go@v5
+              with:
+                  go-version: ${{ inputs.version || '1.24' }}
+
+            # --- Rust Setup ---
+            - name: Setup Rust
+              if: inputs.language == 'rust'
+              uses: dtolnay/rust-toolchain@master
+              with:
+                  toolchain: ${{ inputs.version || 'stable' }}
+
+            # --- Python Setup ---
+            - name: Setup Python
+              if: inputs.language == 'python'
+              uses: actions/setup-python@v5
+              with:
+                  python-version: ${{ inputs.version || '3.12' }}
+
+            # --- Node Setup ---
+            - name: Setup Node
+              if: inputs.language == 'node'
+              uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ inputs.version || '20' }}
+
+            # --- Run Tests ---
+            - name: Run Tests (Go)
+              if: inputs.language == 'go'
+              run: ${{ inputs.command || 'go test -v ./...' }}
+
+            - name: Run Tests (Rust)
+              if: inputs.language == 'rust'
+              run: ${{ inputs.command || 'cargo test' }}
+
+            - name: Run Tests (Python)
+              if: inputs.language == 'python'
+              run: |
+                  pip install -r requirements.txt || true
+                  pip install pytest
+                  ${{ inputs.command || 'pytest' }}
+
+            - name: Run Tests (Node)
+              if: inputs.language == 'node'
+              run: |
+                  npm ci || npm install
+                  ${{ inputs.command || 'npm test' }}
