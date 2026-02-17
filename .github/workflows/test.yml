@@ -12,11 +12,6 @@ on:
                 required: false
                 type: string
                 default: ""
-            version:
-                description: "Language version (e.g. 1.21, stable, 3.12, 20)."
-                required: false
-                type: string
-                default: ""
             command:
                 description: "Custom test command. Defaults to standard language test command."
                 required: false
