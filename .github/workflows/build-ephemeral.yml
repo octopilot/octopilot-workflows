@@ -37,7 +37,7 @@ jobs:
 
             - name: Build and Push to ttl.sh
               id: build
-              uses: octopilot/octopilot-actions/build-ephemeral@main
+              uses: octopilot/actions/build-ephemeral@main
               with:
                   ttl: ${{ inputs.ttl }}
                   op_version: ${{ inputs.op_version }}

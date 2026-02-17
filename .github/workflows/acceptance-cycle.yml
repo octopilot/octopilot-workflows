@@ -59,7 +59,7 @@ jobs:
                   ref: ${{ inputs.tag }}
 
             - name: Read pipeline properties
-              uses: octopilot/octopilot-actions/read-properties@v1
+              uses: octopilot/actions/read-properties@v1
               with:
                   file: .github/waas/pipeline.properties
 
@@ -80,7 +80,7 @@ jobs:
             # --- Secrets ---
 
             - name: Decrypt Pipeline Secrets
-              uses: octopilot/octopilot-actions/sops-decrypt@v1
+              uses: octopilot/actions/sops-decrypt@v1
               if: ${{ hashFiles('.github/waas/pipeline.secrets.yaml') != '' }}
               with:
                   file: .github/waas/pipeline.secrets.yaml
