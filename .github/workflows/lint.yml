@@ -3,46 +3,11 @@ name: "Lint (Octopilot)"
 on:
     workflow_call:
         inputs:
-            python-version:
-                description: "Python version to use for pre-commit."
+            pipeline-context:
+                description: "Consolidated CI context object (JSON)"
                 required: false
                 type: string
-                default: "3.12"
-            extra-args:
-                description: "Additional arguments for pre-commit run."
-                required: false
-                type: string
-                default: "--all-files"
-            skip-checks:
-                description: "Comma-separated list of pre-commit hooks to skip (SKIP env var)."
-                required: false
-                type: string
-                default: ""
-            languages:
-                description: "Comma-separated list of languages to setup (go, rust, node, python)."
-                required: false
-                type: string
-                default: ""
-            go-version:
-                description: "Go version to use"
-                required: false
-                type: string
-                default: "stable"
-            rust-version:
-                description: "Rust version/toolchain to use"
-                required: false
-                type: string
-                default: "stable"
-            node-version:
-                description: "Node version to use"
-                required: false
-                type: string
-                default: "lts/*"
-            java-version:
-                description: "Java version to use"
-                required: false
-                type: string
-                default: "17"
+                default: "{}"
 
 jobs:
     lint:
@@ -58,34 +23,34 @@ jobs:
             # --- Multi-language Setup ---
 
             - name: Setup Go
-              if: contains(inputs.languages, 'go')
+              if: contains(fromJson(inputs.pipeline-context).languages, 'go') || contains(inputs.languages, 'go')
               uses: actions/setup-go@v5
               with:
-                  go-version: ${{ inputs.go-version }}
+                  go-version: ${{ fromJson(inputs.pipeline-context).versions.go || inputs.go-version }}
 
             - name: Setup Rust
-              if: contains(inputs.languages, 'rust')
+              if: contains(fromJson(inputs.pipeline-context).languages, 'rust') || contains(inputs.languages, 'rust')
               uses: dtolnay/rust-toolchain@master
               with:
-                  toolchain: ${{ inputs.rust-version }}
+                  toolchain: ${{ fromJson(inputs.pipeline-context).versions.rust || inputs.rust-version }}
                   components: rustfmt, clippy
 
             - name: Setup Node
-              if: contains(inputs.languages, 'node')
+              if: contains(fromJson(inputs.pipeline-context).languages, 'node') || contains(inputs.languages, 'node')
               uses: actions/setup-node@v4
               with:
-                  node-version: ${{ inputs.node-version }}
+                  node-version: ${{ fromJson(inputs.pipeline-context).versions.node || inputs.node-version }}
 
             - uses: actions/setup-python@v5
-              if: contains(inputs.languages, 'python')
+              if: contains(fromJson(inputs.pipeline-context).languages, 'python') || contains(inputs.languages, 'python')
               with:
-                  python-version: ${{ inputs.python-version }}
+                  python-version: ${{ fromJson(inputs.pipeline-context).versions.python || inputs.python-version }}
 
             - uses: actions/setup-java@v4
-              if: contains(inputs.languages, 'java')
+              if: contains(fromJson(inputs.pipeline-context).languages, 'java') || contains(inputs.languages, 'java')
               with:
                   distribution: "temurin"
-                  java-version: ${{ inputs.java-version }}
+                  java-version: ${{ fromJson(inputs.pipeline-context).versions.java || inputs.java-version }}
 
             - name: Install pre-commit
               run: pip install pre-commit
