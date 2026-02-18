@@ -50,32 +50,6 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Install Octopilot Pipeline Tools (op)
-        run: |
-          OP_VERSION="${{ inputs.op_version }}"
-          if [ "$OP_VERSION" == "latest" ]; then
-             # Fetch latest release tag from GitHub API
-             OP_VERSION=$(curl -s https://api.github.com/repos/octopilot/octopilot-pipeline-tools/releases/latest | jq -r .tag_name)
-          fi
-
-          echo "Installing op version: $OP_VERSION"
-
-          # Detect runner architecture
-          ARCH="amd64"
-          if [ "$(uname -m)" == "aarch64" ]; then
-            ARCH="arm64"
-          fi
-          OS="linux"
-
-          URL="https://github.com/octopilot/octopilot-pipeline-tools/releases/download/${OP_VERSION}/op-${OS}-${ARCH}"
-          echo "Downloading from $URL"
-
-          curl -L -o op "$URL"
-          chmod +x op
-          sudo mv op /usr/local/bin/op
-
-          op --version
-
       - name: Login to GHCR
         if: inputs.registry == 'ghcr.io'
         uses: docker/login-action@v3
@@ -86,39 +60,13 @@ jobs:
 
       - name: Build and Push
         id: build
-        run: |
-          # Determine version
-          VERSION="${{ inputs.version }}"
-          if [ -z "$VERSION" ]; then
-            VERSION="${{ github.ref_name }}"
-          fi
-
-          # Pass version to build via env var (for tagging logic)
-          export DOCKER_METADATA_OUTPUT_VERSION="$VERSION"
-
-          # Construct repo URL (e.g. ghcr.io/owner)
-          REPO="${{ inputs.registry }}/${{ github.repository_owner }}"
-
-          echo "Building for platforms: ${{ inputs.platforms }}"
-          echo "Pushing to: $REPO"
-
-          # Run op build
-          # Sbom output dir
-          mkdir -p dist/sbom
-
-          op build --repo "$REPO" --platform "${{ inputs.platforms }}" --push --sbom-output dist/sbom
-
-          # Package SBOMs
-          if [ -d "dist/sbom" ] && [ "$(ls -A dist/sbom)" ]; then
-            tar -czvf dist/sbom.tar.gz -C dist/sbom .
-          fi
-
-          # Extract digest for attestation
-          if [ -f "build_result.json" ]; then
-            TAG=$(jq -r '.builds[0].tag' build_result.json)
-            DIGEST=$(echo "$TAG" | awk -F'@' '{print $2}')
-            echo "digest=$DIGEST" >> $GITHUB_OUTPUT
-          fi
+        uses: octopilot/actions/octopilot@main
+        with:
+          version: ${{ inputs.version != '' && inputs.version || github.ref_name }}
+          registry: ${{ inputs.registry }}/${{ github.repository_owner }}
+          platforms: ${{ inputs.platforms }}
+          op_version: ${{ inputs.op_version }}
+          sbom_output: dist/sbom
 
       - name: Attest Build Provenance
         if: steps.build.outputs.digest != ''
