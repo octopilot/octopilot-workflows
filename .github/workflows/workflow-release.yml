@@ -1,4 +1,22 @@
 name: Reusable Release Workflow
+# ──────────────────────────────────────────────────────────────────────────────
+# Prerequisites
+# ──────────────────────────────────────────────────────────────────────────────
+# repo_token  — Pass secrets.REPO_PAT (org-level Personal Access Token).
+#               Requires the `contents: write` scope on the target repo.
+#
+#               WHY A PAT IS REQUIRED:
+#               GITHUB_TOKEN cannot push commits back to the repo in a way that
+#               triggers downstream CI workflows (e.g. the `ci.yml` build that
+#               creates the container images). GitHub blocks this to prevent
+#               infinite loops. A PAT-authored push DOES trigger CI normally.
+#
+#               The octopilot org has REPO_PAT configured as an org-level secret.
+#               Pass it in the calling workflow:
+#
+#                 secrets:
+#                   repo_token: ${{ secrets.REPO_PAT }}
+# ──────────────────────────────────────────────────────────────────────────────
 
 on:
     workflow_call:
@@ -18,7 +36,7 @@ on:
                 type: string
         secrets:
             repo_token:
-                description: "GitHub Token (PAT) for pushing tags and triggering CI"
+                description: "PAT with contents:write — use secrets.REPO_PAT (see comment above)"
                 required: true
 
 jobs:
