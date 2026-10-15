@@ -34,6 +34,13 @@ on:
                 description: "Path to version file (optional)"
                 required: false
                 type: string
+            trailer:
+                description: >
+                    Optional trailer line(s) appended to the release commit message, e.g. "Release-Feeds: a b". They
+                    travel with the tag, so a tag-triggered build can read choices made when the release was cut.
+                required: false
+                type: string
+                default: ""
         secrets:
             repo_token:
                 description: "PAT with contents:write — use secrets.REPO_PAT (see comment above)"
@@ -59,11 +66,26 @@ jobs:
                   bump: ${{ inputs.bump }}
                   file: ${{ inputs.file }}
 
+            - name: Release commit message
+              id: msg
+              shell: bash
+              env:
+                  VERSION: ${{ steps.bump.outputs.version }}
+                  TRAILER: ${{ inputs.trailer }}
+              run: |
+                  set -euo pipefail
+                  {
+                    echo "message<<__MSG__"
+                    echo "chore(release): bump version to v${VERSION}"
+                    if [ -n "${TRAILER}" ]; then echo; printf '%s\n' "${TRAILER}"; fi
+                    echo "__MSG__"
+                  } >> "$GITHUB_OUTPUT"
+
             - name: Commit, Tag, and Push
               uses: EndBug/add-and-commit@v9
               with:
                   add: "." # Add all changes (the bumped file)
-                  message: "chore(release): bump version to v${{ steps.bump.outputs.version }}"
+                  message: ${{ steps.msg.outputs.message }}
                   tag: "v${{ steps.bump.outputs.version }}"
                   author_name: "github-actions[bot]"
                   author_email: "github-actions[bot]@users.noreply.github.com"
