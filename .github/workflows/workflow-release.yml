@@ -41,6 +41,13 @@ on:
                 required: false
                 type: string
                 default: ""
+            runner:
+                description: >
+                    Runner for the release job: a label (default "ubuntu-latest") or a JSON array string for a
+                    self-hosted label set, e.g. '["self-hosted", "linux", "x64", "microscaler"]'.
+                required: false
+                type: string
+                default: "ubuntu-latest"
         secrets:
             repo_token:
                 description: "PAT with contents:write — use secrets.REPO_PAT (see comment above)"
@@ -48,7 +55,7 @@ on:
 
 jobs:
     release:
-        runs-on: ubuntu-latest
+        runs-on: ${{ (startsWith(inputs.runner, '[') && fromJSON(inputs.runner)) || inputs.runner }}
         permissions:
             contents: write
         steps:
